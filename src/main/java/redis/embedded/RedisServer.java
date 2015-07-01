@@ -46,6 +46,7 @@ public class RedisServer {
 
     private final File command;
     private final int port;
+    private final String password;
     private final String version;
 
     private volatile boolean active = false;
@@ -59,13 +60,22 @@ public class RedisServer {
         this(version, findFreePort());
     }
 
-    public RedisServer(int port) throws IOException, URISyntaxException {
-        this(null, port);
+    public RedisServer(String version, int port) throws IOException, URISyntaxException {
+        this(version, port, null);
     }
 
-    public RedisServer(String version, int port) throws IOException, URISyntaxException {
+    public RedisServer(int port) throws IOException, URISyntaxException {
+        this(null, port, null);
+    }
+
+    public RedisServer(int port, String password) throws IOException, URISyntaxException {
+        this(null, port, password);
+    }
+
+    public RedisServer(String version, int port, String password) throws IOException, URISyntaxException {
         this.version = (version != null) ? version : LATEST_REDIS_VERSION;
         this.port = port;
+        this.password = password;
         this.command = extractExecutableFromJar(RedisServerEnum.getOsDependentRedisServerEnum());
     }
 
@@ -81,10 +91,10 @@ public class RedisServer {
         //redisExecutableFile.createNewFile();
 
         //copyFile(redisExecutableIs, redisExecutableFile);
-        
+
         long num = Files.copy(redisExecutableIs, redisExecutableFile.getAbsoluteFile().toPath());
         //LOG.
-        
+
         redisExecutableFile.setExecutable(true);
         redisExecutableFile.deleteOnExit();
 
@@ -92,12 +102,16 @@ public class RedisServer {
     }
 
 
-	public int getPort() {
+    public int getPort() {
         return port;
     }
 
     public String getVersion() {
         return version;
+    }
+
+    public String getPassword(){
+        return password;
     }
 
     public boolean isActive() {
@@ -127,7 +141,15 @@ public class RedisServer {
     }
 
     private ProcessBuilder createRedisProcessBuilder() {
-        ProcessBuilder pb = new ProcessBuilder(command.getAbsolutePath(), "--port", Integer.toString(port));
+
+        ProcessBuilder pb;
+
+        if(password == null || password.isEmpty()){
+            pb = new ProcessBuilder(command.getAbsolutePath(), "--port", Integer.toString(port));
+        } else {
+            pb = new ProcessBuilder(command.getAbsolutePath(), "--port", Integer.toString(port), "--requirepass", password);
+        }
+
         pb.directory(command.getParentFile());
 
         return pb;
